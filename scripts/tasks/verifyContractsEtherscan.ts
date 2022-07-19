@@ -12,12 +12,6 @@ task("verify-contracts-etherscan").setAction(async (args, hre) => {
       console.log(`attempting to verify contract "${contract}"`);
       await verifyOnEtherscan(
         networkContracts[contract],
-        // Not all constructorArguments() functions need parameters,
-        // but the ones that do should accept parameters in this standard
-        // order of inputs.
-        module.constructorArguments(
-          networkContracts // contract name => contract address dictionary
-        ),
         hre
       );
     }
@@ -26,13 +20,11 @@ task("verify-contracts-etherscan").setAction(async (args, hre) => {
 
 const verifyOnEtherscan = async (
   contractAddress,
-  constructorArguments = [],
   hre
 ) => {
   try {
     await hre.run("verify:verify", {
-      address: contractAddress,
-      constructorArguments
+      address: contractAddress
     });
   } catch (e) {
     console.error(e);

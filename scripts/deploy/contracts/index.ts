@@ -1,11 +1,8 @@
 import { ethers as tsEthers } from "ethers";
-import * as Token from "./Token";
-import * as TokenUpgradeable from "./TokenUpgradeable";
-import * as NFT from "./NFT";
+import * as Kitty from "./Kitty";
 
 export interface DeploymentModule {
   contractNames: (...params: any) => string[];
-  constructorArguments: (addresses?: any) => any[];
   deploy: (
     deployer: tsEthers.Signer,
     setAddresses: Function,
@@ -14,6 +11,6 @@ export interface DeploymentModule {
   upgrade?: (deployer: tsEthers.Signer, addresses?: any) => void;
 }
 
-const modules: DeploymentModule[] = [Token, TokenUpgradeable, NFT];
+const modules: DeploymentModule[] = [Kitty];
 
 export default modules;
