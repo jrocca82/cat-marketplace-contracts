@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Kitty is IERC721, Ownable {
+contract KittyContract is IERC721, Ownable {
     /** @dev Counts the number of tokens minted */
     using Counters for Counters.Counter;
     Counters.Counter private tokenCounter;
@@ -46,6 +46,9 @@ contract Kitty is IERC721, Ownable {
         uint16 generation;
     }
 
+    //Map tokenId to Kitty struct
+    mapping(uint256 => KittyData) kitties;
+
     modifier approvedOrOwner(address _from, address _to, uint256 _tokenId) {
         require(ownerOf(_tokenId) == msg.sender 
                 || approvedAddress[_tokenId] == msg.sender
@@ -56,10 +59,11 @@ contract Kitty is IERC721, Ownable {
         _;
     }
 
-    //Map tokenId to Kitty struct
-    mapping(uint256 => KittyData) kitties;
 
-    constructor() IERC721() {}
+    constructor() IERC721() {
+        //create an empty cat for marketplace index 0
+        createKitty(uint256(0), 0, 0, 0, address(0));
+    }
 
     // SUPPORTING FUNCTIONS
     function increasedTokenId() private returns (uint256) {
@@ -79,11 +83,11 @@ contract Kitty is IERC721, Ownable {
         return tokenCounter.current();
     }
 
-    function name() pure public returns (string memory tokenName) {
+    function name() pure external returns (string memory tokenName) {
         return nameOfToken;
     }
 
-    function symbol() pure public returns (string memory tokenSymbol) {
+    function symbol() pure external returns (string memory tokenSymbol) {
         return symbolOfToken;
     }
 
@@ -135,7 +139,7 @@ contract Kitty is IERC721, Ownable {
         return kittyId;
     }
 
-    function createKittyGen0(uint256 genes) public onlyOwner {
+    function createKittyGen0(uint256 genes) external onlyOwner {
         require(gen0Counter.current() < maxGen0, "No more gen 0 cats left");
 
         gen0Counter.increment();
@@ -159,6 +163,66 @@ contract Kitty is IERC721, Ownable {
        dadId = uint256(kitty.dadId);
        generation = uint256(kitty.generation);
        owner = tokenOwner[_tokenId];
+    }
+
+    function breed(uint256 _dadId, uint256 _momId) public {
+        require(ownerOf(_dadId) == msg.sender && ownerOf(_momId) == msg.sender, "You cannot breed these cats");
+        
+        //Caculate child DNA
+        uint256 momDna = kitties[_momId].genes;
+        uint256 dadDna = kitties[_dadId].genes;
+        
+        uint256 childDna = _mixDna(dadDna, momDna);
+
+        //Calculate child generation
+        uint256 momGeneration = kitties[_momId].generation;
+        uint256 dadGeneration = kitties[_dadId].generation;
+
+        uint256 childGen;
+
+        if (momGeneration > dadGeneration) {
+            childGen = momGeneration + 1;
+        } else {
+            childGen = dadGeneration + 1;
+        }
+
+        createKitty(childDna, _momId, _dadId, childGen, msg.sender);
+    }
+
+    function _mixDna(uint256 dadDna, uint256 momDna) internal view returns (uint256) {
+        //generate random 8 bit number
+        uint8 random = uint8(block.timestamp % 255); //Something like 11001011
+
+        //Genes as array
+        uint256[8] memory geneArray;
+        uint8 index = 7;
+
+        /*
+        Loops through 8 times to get 8 pairs and builds 
+        16-digit geneArray (from end to beginning):
+        */
+        for (uint256 i = 1; i <= 128; i = i * 2) {
+            if(random & 1 != 0) {
+                //use mom genes
+                geneArray[index] = uint8(momDna % 100);
+            } else {
+                //use dad genes
+                geneArray[index] = uint8(dadDna % 100);
+            }
+            momDna = momDna / 100;
+            dadDna = dadDna / 100;
+            index--;
+        }
+
+        //Reassemble array as uint256
+        uint256 newGene;
+
+        for (uint8 i = 0; i < 8; i++) {
+            newGene = newGene + geneArray[i];
+            newGene = newGene * 100;
+        }
+
+        return newGene;
     }
 
     function approve(address _approved,uint256  _tokenId) external {
@@ -189,7 +253,7 @@ contract Kitty is IERC721, Ownable {
         return _operatorApprovals[_owner][_operator];
     }
 
-    function transferFrom(address _from, address _to, uint256 _tokenId) public approvedOrOwner(_from, _to, _tokenId){
+    function transferFrom(address _from, address _to, uint256 _tokenId) external approvedOrOwner(_from, _to, _tokenId){
         _transfer(_from, _to, _tokenId);
     }
 
@@ -197,7 +261,7 @@ contract Kitty is IERC721, Ownable {
         address from,
         address to,
         uint256 tokenId
-    ) public approvedOrOwner(from, to, tokenId){
+    ) external approvedOrOwner(from, to, tokenId){
         require (from != address(0), "Cannot send from zero address");
         require (to != address(0), "Cannot send to zero address");
         require (tokenId <= tokenCounter.current(), "Token does not exist");
