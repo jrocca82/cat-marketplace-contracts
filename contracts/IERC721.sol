@@ -4,7 +4,8 @@ pragma solidity ^0.8.9;
 /**
  * @dev Required interface of an ERC721 compliant contract.
  */
-interface IERC721 {
+ 
+interface IERC721{
     /**
      * @dev Emitted when `tokenId` token is transfered from `from` to `to`.
      */
